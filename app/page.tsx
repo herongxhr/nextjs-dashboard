@@ -1,13 +1,51 @@
+'use client';
 import AcmeLogo from '@/app/ui/acme-logo';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { lusitana } from '@/app/ui/fonts';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { socket } from '../socket';
 
 export default function Page() {
+  const [isConnected, setIsConnected] = useState(socket.connected);
+  const [transport, setTransport] = useState('N/A');
+
+  useEffect(() => {
+    if (socket.connected) {
+      onConnect();
+    }
+
+    function onConnect() {
+      setIsConnected(true);
+      setTransport(socket.io.engine.transport.name);
+
+      socket.io.engine.on('upgrade', (transport) => {
+        setTransport(transport.name);
+      });
+    }
+
+    function onDisconnect() {
+      setIsConnected(false);
+      setTransport('N/A');
+    }
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+    };
+  }, []);
+
   return (
     <main className="flex min-h-screen flex-col p-6">
       <div className="flex h-20 shrink-0 items-end rounded-lg bg-blue-500 p-4 md:h-52">
+        <div>
+          <p>Status: {isConnected ? 'connected' : 'disconnected'}</p>
+          <p>Transport: {transport}</p>
+        </div>
         {/* <AcmeLogo /> */}
       </div>
       <div className="mt-4 flex grow flex-col gap-4 md:flex-row">
