@@ -8,12 +8,10 @@ import {
   CardsSkeleton,
 } from '@/app/ui/skeletons';
 import CardWrapper from '@/app/ui/dashboard/cards';
-import Support from '@/app/ui/dashboard/support';
 
 export default async function Page() {
   return (
     <main>
-      <Support />
       <h1 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
         仪表板
       </h1>

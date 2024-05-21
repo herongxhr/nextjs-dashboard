@@ -1,7 +1,7 @@
 import { inter } from '@/app/ui/fonts';
-import SocketClient from '@/app/ui/chat/socketClient';
 import { Metadata } from 'next';
 import '@/app/ui/global.css';
+import Chat from '@/app/ui/support/chat';
 
 export const metadata: Metadata = {
   title: {
@@ -21,7 +21,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
         {children}
-        <SocketClient />
+        <Chat />
       </body>
     </html>
   );

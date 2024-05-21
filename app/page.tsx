@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { lusitana } from '@/app/ui/fonts';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { socket } from '../socket';
+import { socket } from './ui/support/socket';
 
 export default function Page() {
   const [isConnected, setIsConnected] = useState(socket.connected);
