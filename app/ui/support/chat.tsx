@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { socket } from './socket';
+import  socket  from './socket';
 import Records from './records';
 import ChatTools from './chatTools';
 import InputArea from './inputArea';
@@ -36,6 +36,13 @@ export default function Chat() {
   };
 
   useEffect(() => {
+    const userId = localStorage.getItem("userId");
+
+    if (userId) {
+      socket.auth = { userId };
+      socket.connect();
+    }
+
     function handleConnect() {
       console.log('socket已连接');
       // setIsConnected(true);
@@ -46,6 +53,11 @@ export default function Chat() {
       // setIsConnected(false);
     }
 
+    function saveSessionID(userId: string) {
+      localStorage.setItem('userId', userId);
+    }
+
+    socket.on('userId', saveSessionID);
     socket.on('connect', handleConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('chatMessage', handleReceiveMessage);

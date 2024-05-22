@@ -1,4 +1,14 @@
 "use client";
 import { io } from "socket.io-client";
 
-export const socket = io();
+const { HOSTNAME, PORT } = process.env;
+const socket = io(`${HOSTNAME}:${PORT}`, {
+    autoConnect: false,
+});
+
+
+socket.onAny((event, ...args) => {
+    console.log(event, args);
+});
+
+export default socket;

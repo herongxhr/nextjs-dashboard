@@ -10,6 +10,8 @@ import {
 } from './definitions';
 import { formatCurrency } from './utils';
 import { unstable_noStore as noStore } from 'next/cache';
+import dbConnect from '@/db/mongodb';
+import Customer from '@/models/user';
 
 export async function fetchRevenue() {
   noStore();
@@ -238,4 +240,25 @@ export async function getUser(email: string) {
     console.error('Failed to fetch user:', error);
     throw new Error('Failed to fetch user.');
   }
+}
+
+
+
+export async function getFilteredCustomers(page = 1, limit = 10, filter = '') {
+  noStore();
+  try {
+    await dbConnect();
+
+    const skip = (page - 1) * limit;
+    const query = filter ? { status: filter } : {};
+
+    const customers = await Customer.find(query).skip(skip).limit(limit);
+    const total = await Customer.countDocuments(query);
+
+    return { customers, total };
+  } catch (error) {
+    console.error('Failed to fetch customers:', error);
+    throw new Error('Failed to fetch customers.');
+  }
+
 }

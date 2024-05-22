@@ -1,63 +1,24 @@
 import next from "next";
 import { createServer } from "node:http";
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
 import dbConnect from '../db/mongodb.js';
 import { v4 as uuidv4 } from 'uuid';
 import User from '../models/user.ts';
 import dotenv from 'dotenv';
+import { getClientIpAddress } from './utils.js'
 
 dotenv.config(); // 确保在引用任何环境变量之前调用
 
 const dev = process.env.NODE_ENV !== "production";
 
 const hostname = process.env.HOSTNAME || "localhost";
-const port = parseInt(process.env.PORT, 10) || 3000;
+const port = parseInt(process.env.PORT ?? "3000", 10);
 
 // when using middleware `hostname` and `port` must be provided below
 const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
 
-const getClientIpAddress = (socket) => {
-  const forwardedHeader = socket.handshake.headers["forwarded"];
-  const xForwardedForHeader = socket.handshake.headers["x-forwarded-for"];
-  const cloudflareHeader = socket.handshake.headers["cf-connecting-ip"];
-  const fastlyHeader = socket.handshake.headers["fastly-client-ip"];
 
-  // Check if Forwarded header is present
-  if (forwardedHeader) {
-    const directives = forwardedHeader.split(",");
-    for (const directive of directives) {
-      const parts = directive.split(";");
-      for (const part of parts) {
-        const [key, value] = part.trim().split("=");
-        if (key === "for" && value) {
-          return value.trim();
-        }
-      }
-    }
-  }
-
-  // Check if X-Forwarded-For header is present
-  if (xForwardedForHeader) {
-    const ipAddress = xForwardedForHeader.split(",")[0].trim();
-    if (ipAddress) {
-      return ipAddress;
-    }
-  }
-
-  // Check if CloudFlare header is present
-  if (cloudflareHeader) {
-    return cloudflareHeader;
-  }
-
-  // Check if Fastly header is present
-  if (fastlyHeader) {
-    return fastlyHeader;
-  }
-
-  // Default: use the direct connection address
-  return socket.handshake.address;
-};
 
 app.prepare().then(async () => {
   await dbConnect(); // 确保数据库连接成功
@@ -66,11 +27,41 @@ app.prepare().then(async () => {
 
   const io = new Server(httpServer);
 
-  io.on("connection", (socket) => {
+  io.use(async (socket: Socket, next) => {
+    let userId = socket.handshake.auth.userId;
     const ipAddress = getClientIpAddress(socket);
-    console.log('ip地址：', ipAddress, socket.handshake);
+    const userAgent = socket.handshake.headers["user-agent"] || "unknown";
+
+    if (userId) {
+      // 如果存在 sessionID，更新用户的 IP 地址和 User-Agent 信息
+      await User.findOneAndUpdate({ userId: userId }, { ipAddress, userAgent });
+    } else {
+      // 如果不存在 sessionID，创建新用户
+      userId = uuidv4();
+      const user = new User({
+        userId: userId,
+        ipAddress,
+        userAgent,
+        location: 'Unknown',
+        name: 'Unknown',
+        gender: 'Unknown',
+        createdAt: new Date(),
+      });
+      await user.save();
+    }
+
+    // 发送 userId 到客户端
+    socket.emit('userId', userId);
+
+    // 将 userId 附加到 socket 对象
+    (socket as any).userId = userId;
+
+    next();
+  });
+
+  io.on("connection", async (socket) => {
+
     socket.on("chatMessage", async (message, callback) => {
-      console.log('服务器收到消息:', message);
       try {
         // 假设有一个 Chat 模型可用于存储消息
         const Chat = mongoose.model('Chat', new mongoose.Schema({ message: String, timestamp: Date }));
