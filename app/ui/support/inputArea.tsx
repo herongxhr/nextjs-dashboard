@@ -8,7 +8,7 @@ import React, {
 
 interface InputAreaProps {
   placeholder?: string;
-  onSend: (content: Array<{ type: string; content: string }>) => void;
+  onSend: (content: Array<{ type: 'text' | 'image'; content: string }>) => void;
 }
 
 const InputArea: FC<InputAreaProps> = ({
@@ -16,7 +16,7 @@ const InputArea: FC<InputAreaProps> = ({
   onSend,
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [pastedImage, setPastedImage] = useState<string | null>(null);
+  const [_, setPastedImage] = useState<string | null>(null);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {

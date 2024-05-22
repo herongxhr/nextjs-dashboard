@@ -1,4 +1,5 @@
 import { Revenue } from './definitions';
+import { Socket } from 'socket.io';
 
 export const formatCurrency = (amount: number) => {
   return (amount / 100).toLocaleString('en-US', {
@@ -66,4 +67,55 @@ export const generatePagination = (currentPage: number, totalPages: number) => {
     '...',
     totalPages,
   ];
+};
+
+export const getClientIpAddress = (socket: Socket): string => {
+  const forwardedHeader = socket.handshake.headers['forwarded'];
+  const xForwardedForHeader = socket.handshake.headers['x-forwarded-for'];
+  const cloudflareHeader = socket.handshake.headers['cf-connecting-ip'];
+  const fastlyHeader = socket.handshake.headers['fastly-client-ip'];
+
+  // Helper function to parse the Forwarded header
+  const parseForwardedHeader = (header: string): string | null => {
+    const directives = header.split(',');
+    for (const directive of directives) {
+      const parts = directive.split(';');
+      for (const part of parts) {
+        const [key, value] = part.trim().split('=');
+        if (key === 'for' && value) {
+          return value.trim();
+        }
+      }
+    }
+    return null;
+  };
+
+  // Check if Forwarded header is present
+  if (forwardedHeader) {
+    const ipAddress = parseForwardedHeader(forwardedHeader);
+    if (ipAddress) {
+      return ipAddress;
+    }
+  }
+
+  // Check if X-Forwarded-For header is present
+  if (xForwardedForHeader) {
+    const ipAddress = (xForwardedForHeader as string).split(',')[0].trim();
+    if (ipAddress) {
+      return ipAddress;
+    }
+  }
+
+  // Check if CloudFlare header is present
+  if (cloudflareHeader) {
+    return cloudflareHeader as string;
+  }
+
+  // Check if Fastly header is present
+  if (fastlyHeader) {
+    return fastlyHeader as string;
+  }
+
+  // Default: use the direct connection address
+  return socket.handshake.address;
 };
