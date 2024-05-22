@@ -1,6 +1,9 @@
 import next from "next";
 import { createServer } from "node:http";
 import { Server } from "socket.io";
+import dbConnect from '../db/mongodb.js';
+import { v4 as uuidv4 } from 'uuid';
+import User from '../models/user.ts';
 import dotenv from 'dotenv';
 
 dotenv.config(); // 确保在引用任何环境变量之前调用
@@ -56,21 +59,28 @@ const getClientIpAddress = (socket) => {
   return socket.handshake.address;
 };
 
-app.prepare().then(() => {
-  const httpServer = createServer(handler);
+app.prepare().then(async () => {
+  await dbConnect(); // 确保数据库连接成功
 
-  console.log('appp', app);
+  const httpServer = createServer(handler);
 
   const io = new Server(httpServer);
 
   io.on("connection", (socket) => {
     const ipAddress = getClientIpAddress(socket);
     console.log('ip地址：', ipAddress, socket.handshake);
-    socket.on("chatMessage", (message, callback) => {
+    socket.on("chatMessage", async (message, callback) => {
       console.log('服务器收到消息:', message);
-      callback({
-        status: 'ok'
-      })
+      try {
+        // 假设有一个 Chat 模型可用于存储消息
+        const Chat = mongoose.model('Chat', new mongoose.Schema({ message: String, timestamp: Date }));
+        const newMessage = new Chat({ message: message, timestamp: new Date() });
+        await newMessage.save();
+        callback({ status: 'ok' });
+      } catch (error) {
+        console.error('Error saving message:', error);
+        callback({ status: 'error' });
+      }
     })
   });
 
