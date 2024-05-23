@@ -2,7 +2,8 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 interface IUser extends Document {
   userId: string; // 用户唯一标识符
-  ipAddress: string; // 用户的 IP 地址
+  ip: string; // 用户的 IP 地址
+  ipLocation: string;
   userAgent: string; // 用户的浏览器和操作系统信息
   location: string; // 用户的地理位置
   name: string; // 用户的全名
@@ -28,7 +29,8 @@ interface IUser extends Document {
 
 const UserSchema: Schema = new Schema({
   userId: { type: String, required: true, unique: true },
-  ipAddress: { type: String, required: true },
+  ip: { type: String, required: true },
+  ipLocation: { type: String },
   userAgent: { type: String, required: true },
   location: { type: String, required: true },
   name: { type: String, required: true },

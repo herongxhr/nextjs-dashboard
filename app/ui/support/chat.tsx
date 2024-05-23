@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import  socket  from './socket';
+import socket from '@/app/lib/socket';
 import Records from './records';
 import ChatTools from './chatTools';
-import InputArea from './inputArea';
+import InputArea from '@/app/ui/inputArea';
 
 export default function Chat() {
   const [isConnected, setIsConnected] = useState(socket.connected);

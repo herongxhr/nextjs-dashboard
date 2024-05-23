@@ -1,11 +1,9 @@
 import next from "next";
 import { createServer } from "node:http";
-import { Server, Socket } from "socket.io";
+import { Server } from "socket.io";
 import dbConnect from '../db/mongodb.js';
-import { v4 as uuidv4 } from 'uuid';
-import User from '../models/user.ts';
 import dotenv from 'dotenv';
-import { getClientIpAddress } from './utils.js'
+import { updateCustomerInfo } from './middleware.js'
 
 dotenv.config(); // 确保在引用任何环境变量之前调用
 
@@ -19,6 +17,7 @@ const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
 
 
+const onlineUsers = new Map<string, string>(); // 存储 userId 和 socket.id 的映射
 
 app.prepare().then(async () => {
   await dbConnect(); // 确保数据库连接成功
@@ -27,40 +26,14 @@ app.prepare().then(async () => {
 
   const io = new Server(httpServer);
 
-  io.use(async (socket: Socket, next) => {
-    let userId = socket.handshake.auth.userId;
-    const ipAddress = getClientIpAddress(socket);
-    const userAgent = socket.handshake.headers["user-agent"] || "unknown";
-
-    if (userId) {
-      // 如果存在 sessionID，更新用户的 IP 地址和 User-Agent 信息
-      await User.findOneAndUpdate({ userId: userId }, { ipAddress, userAgent });
-    } else {
-      // 如果不存在 sessionID，创建新用户
-      userId = uuidv4();
-      const user = new User({
-        userId: userId,
-        ipAddress,
-        userAgent,
-        location: 'Unknown',
-        name: 'Unknown',
-        gender: 'Unknown',
-        createdAt: new Date(),
-      });
-      await user.save();
-    }
-
-    // 发送 userId 到客户端
-    socket.emit('userId', userId);
-
-    // 将 userId 附加到 socket 对象
-    (socket as any).userId = userId;
-
-    next();
-  });
+  io.use(updateCustomerInfo);
 
   io.on("connection", async (socket) => {
-
+    const userId = (socket as any).userId;
+    onlineUsers.set(userId, socket.id);
+    socket.on("disconnect", () => {
+      onlineUsers.delete(userId);
+    });
     socket.on("chatMessage", async (message, callback) => {
       try {
         // 假设有一个 Chat 模型可用于存储消息
@@ -73,6 +46,34 @@ app.prepare().then(async () => {
         callback({ status: 'error' });
       }
     })
+
+    // 向特定用户发送消息
+    socket.on("sendMessageToUser", (data, callback) => {
+      const { toUserId, message } = data;
+      const toSocketId = onlineUsers.get(toUserId);
+      if (toSocketId) {
+        io.to(toSocketId).emit("receiveMessage", { from: userId, message });
+        callback({ status: "ok" });
+      } else {
+        callback({ status: "error", message: "User is not online" });
+      }
+    });
+
+    // 向所有用户发送消息
+    socket.on("sendMessageToAll", (message, callback) => {
+      io.emit("receiveMessage", { from: "客服", message });
+      callback({ status: "ok" });
+    });
+
+    // 每隔一段时间广播在线用户列表
+    setInterval(() => {
+      const users = Array.from(onlineUsers.keys()).map(userId => ({
+        id: userId,
+        // 假设用户名和 userId 相同，实际情况下应查询用户信息
+        name: userId
+      }));
+      io.emit("onlineUsers", users);
+    }, 5000);
   });
 
   httpServer

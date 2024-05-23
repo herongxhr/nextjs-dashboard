@@ -92,17 +92,17 @@ export const getClientIpAddress = (socket: Socket): string => {
 
   // Check if Forwarded header is present
   if (forwardedHeader) {
-    const ipAddress = parseForwardedHeader(forwardedHeader);
-    if (ipAddress) {
-      return ipAddress;
+    const ip = parseForwardedHeader(forwardedHeader);
+    if (ip) {
+      return ip;
     }
   }
 
   // Check if X-Forwarded-For header is present
   if (xForwardedForHeader) {
-    const ipAddress = (xForwardedForHeader as string).split(',')[0].trim();
-    if (ipAddress) {
-      return ipAddress;
+    const ip = (xForwardedForHeader as string).split(',')[0].trim();
+    if (ip) {
+      return ip;
     }
   }
 
